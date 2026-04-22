@@ -95,10 +95,10 @@ export default function LoginPage() {
 
           {/* Testimonial-style stats */}
           {[
-            { value: '+RM 1,140/mo', label: 'average revenue improvement' },
-            { value: '7%',           label: 'average utilization gain'     },
-            { value: '16 days',      label: 'average idle days saved'      },
-          ].map(s => (
+  { value: '', label: 'Potential revenue uplift' },
+  { value: '', label: 'Utilization improvement opportunities' },
+  { value: '', label: 'Idle days reduction insights' },
+].map(s => (
             <div key={s.label} style={{
               display: 'flex', alignItems: 'center', gap: 14,
               marginBottom: 14,

@@ -116,6 +116,11 @@ export default function LandingPage() {
             Sign in
           </button>
         </div>
+
+        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 18 }}>
+          Free to use. No setup required. Upload your CSV and get insights in minutes.
+        </div>
+
       </div>
 
       {/* Feature cards */}
@@ -165,50 +170,6 @@ export default function LandingPage() {
           </div>
         ))}
       </div>
-
-      {/* Stats bar */}
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: 48,
-        padding: '28px 48px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        marginBottom: 60,
-      }}>
-        {[
-          { value: '+RM 1,140', label: 'avg monthly gain' },
-          { value: '67%',       label: 'target utilization' },
-          { value: '-16',       label: 'idle days saved' },
-          { value: '5–50',      label: 'vehicles supported' },
-        ].map(s => (
-          <div key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#7B9FFF' }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* CTA */}
-      <div style={{ textAlign: 'center', padding: '0 48px 80px' }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#FFFFFF', marginBottom: 12 }}>
-          Ready to optimise your fleet?
-        </div>
-        <div style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 24 }}>
-          Free to use. No setup required. Upload your CSV and get insights in minutes.
-        </div>
-        <button
-          onClick={() => navigate('/login?signup=true')}
-          style={{
-            background: 'linear-gradient(135deg, #253BAF, #12086F)',
-            border: '1px solid rgba(123,159,255,0.3)',
-            borderRadius: 12, color: 'white',
-            padding: '14px 36px', fontSize: 15,
-            fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Create free account →
-        </button>
-      </div>
-
     </div>
   )
 }
