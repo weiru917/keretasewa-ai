@@ -1,16 +1,32 @@
-# React + Vite
+# KeretaSewa AI
+Decision Intelligence Platform for Car Rental Operators
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+KeretaSewa AI helps rental businesses optimize fleet utilization, improve revenue, and reduce idle vehicle time using AI-driven insights and interactive analytics.
 
-Currently, two official plugins are available:
+✨ Key Features
+📊 Dashboard Analytics
+-Fleet utilization overview
+-Revenue and booking trends
+-Weekday vs weekend demand analysis
+-Idle vehicle detection
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+🤖 AI Recommendations
+-Smart action suggestions
+-Reasoning behind each recommendation
+-Confidence score & impact estimation
+-Trade-off analysis
 
-## React Compiler
+💬 Ask AI Assistant
+-Natural language queries
+-Booking acceptance decisions
+-Pricing strategy simulations
+-“What-if” scenario analysis
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+📁 Data Input System
+-CSV upload support
+-Manual data entry option
+-Auto-mapping of booking data
+-Mock dataset for demo mode
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+.env
+VITE_FIREBASE_API_KEY=your_api_key
