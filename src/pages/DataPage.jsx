@@ -3,6 +3,21 @@ import CSVUpload from '../components/CSVUpload'
 import { useFleetStore } from '../store/fleetStore'
 import { processFleetData } from '../utils/dataProcessor'
 import { mockVehicles } from '../data/mockData'
+import { saveBookings, saveVehicles } from '../utils/firestoreService'
+import { auth } from '../firebase'
+
+// inside handleDataLoaded, after setProcessedData:
+const handleDataLoaded = async (bookings) => {
+  setRawData(bookings, mockVehicles)
+  setProcessedData(processFleetData(bookings, mockVehicles))
+
+  // Save to Firestore so it persists on next login
+  const uid = auth.currentUser?.uid
+  if (uid) {
+    await saveBookings(uid, bookings)
+    await saveVehicles(uid, mockVehicles)
+  }
+}
 
 export default function DataPage() {
   const navigate = useNavigate()

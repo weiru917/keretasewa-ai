@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 
 export const useFleetStore = create((set) => ({
+  // Auth
+  userProfile: null,
+  
   // Raw data
   rawBookings: [],
   rawVehicles: [],
@@ -14,12 +17,16 @@ export const useFleetStore = create((set) => ({
   aiError: null,
 
   // Actions
-  setRawData: (bookings, vehicles) =>
-    set({ rawBookings: bookings, rawVehicles: vehicles }),
-
-  setProcessedData: (data) => set({ processedData: data }),
-
-  setAIRecommendations: (recs) => set({ aiRecommendations: recs }),
-  setAILoading: (val) => set({ aiLoading: val }),
-  setAIError: (err) => set({ aiError: err }),
+  setUserProfile:      (p)    => set({ userProfile: p }),
+  setRawData:          (b, v) => set({ rawBookings: b, rawVehicles: v }),
+  setProcessedData:    (d)    => set({ processedData: d }),
+  setAIRecommendations:(r)    => set({ aiRecommendations: r }),
+  setAILoading:        (v)    => set({ aiLoading: v }),
+  setAIError:          (e)    => set({ aiError: e }),
+  clearAll:            ()     => set({
+    userProfile: null,
+    rawBookings: [], rawVehicles: [],
+    processedData: null,
+    aiRecommendations: null,
+  }),
 }))
