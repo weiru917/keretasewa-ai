@@ -1,16 +1,27 @@
 const GLM_CONFIG = {
   baseURL: 'http://localhost:3001',
-  model: import.meta.env.VITE_ILMU_MODEL || 'ilmu-glm-5.1',
+  model: import.meta.env.VITE_OPENROUTER_MODEL || 'qwen/qwen3-32b',
 }
 
 function validateConfig() {
   if (!GLM_CONFIG.model) {
-    throw new Error('Missing VITE_ILMU_MODEL in .env file')
+    throw new Error('Missing VITE_OPENROUTER_MODEL in .env file')
   }
 }
 
 async function callGLM(messages, systemPrompt = '') {
   validateConfig()
+
+  const finalMessages = []
+
+  if (systemPrompt) {
+    finalMessages.push({
+      role: 'system',
+      content: systemPrompt,
+    })
+  }
+
+  finalMessages.push(...messages)
 
   const response = await fetch(`${GLM_CONFIG.baseURL}/api/glm`, {
     method: 'POST',
@@ -19,54 +30,49 @@ async function callGLM(messages, systemPrompt = '') {
     },
     body: JSON.stringify({
       model: GLM_CONFIG.model,
+      messages: finalMessages,
+      temperature: 0.4,
       max_tokens: 2048,
-      system: systemPrompt,
-      messages,
     }),
   })
 
- if (!response.ok) {
-  const errorText = await response.text()
-
-  if (response.status === 504) {
-    throw new Error(
-      'AI provider is temporarily busy right now. Please try again in a moment.'
-    )
+  let data
+  try {
+    data = await response.json()
+  } catch {
+    const text = await response.text()
+    throw new Error(text || 'AI provider returned an invalid response')
   }
 
-  if (response.status === 404) {
-    throw new Error(
-      'AI endpoint unavailable at the moment.'
-    )
+  if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error('AI provider rate limit reached. Please try again later.')
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('AI authentication failed. Please check your OpenRouter API key.')
+    }
+
+    if (response.status === 404) {
+      throw new Error('AI model or endpoint unavailable. Please check the model name.')
+    }
+
+    if (response.status === 504) {
+      throw new Error('AI provider is temporarily busy. Please try again shortly.')
+    }
+
+    throw new Error(data?.error?.message || `AI API Error: ${response.status}`)
   }
 
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(
-      'AI authentication failed. Please check API key.'
-    )
-  }
-
-  throw new Error(`GLM API Error: ${response.status}`)
-}
-
-  const data = await response.json()
-
-  if (Array.isArray(data.content)) {
-    return data.content
-      .filter((item) => item.type === 'text')
-      .map((item) => item.text)
-      .join('\n')
-  }
-
-  if (typeof data.content === 'string') {
-    return data.content
+  if (data.choices?.[0]?.message?.content) {
+    return data.choices[0].message.content
   }
 
   if (data.error) {
     throw new Error(data.error.message || JSON.stringify(data.error))
   }
 
-  return JSON.stringify(data)
+  throw new Error('AI returned an empty response.')
 }
 
 function cleanJSONResponse(response) {
@@ -172,7 +178,7 @@ Generate 2-3 overall strategic recommendations for this fleet.`
     const clean = cleanJSONResponse(response)
 
     if (!clean) {
-      throw new Error('GLM returned empty response')
+      throw new Error('AI returned empty response')
     }
 
     return parseRecommendationJSON(clean)

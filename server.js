@@ -3,7 +3,8 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 
 dotenv.config()
-
+console.log('ENV key loaded:', process.env.OPENROUTER_API_KEY?.slice(0, 12))
+console.log('ENV model loaded:', process.env.OPENROUTER_MODEL)
 const app = express()
 
 app.use(cors())
@@ -11,33 +12,25 @@ app.use(express.json())
 
 app.post('/api/glm', async (req, res) => {
   try {
-    const response = await fetch('https://api.ilmu.ai/anthropic/v1/messages', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.VITE_ILMU_API_KEY}`,
-        'anthropic-version': '2023-06-01',
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_MODEL,
+        messages: req.body.messages
+      })
     })
 
-    const text = await response.text()
+    const data = await response.json()
 
-    if (response.status === 504) {
-      return res.status(504).json({
-        error: 'AI provider is temporarily busy. Please try again shortly.',
-      })
-    }
+    return res.status(response.status).json(data)
 
-    try {
-      const data = JSON.parse(text)
-      return res.status(response.status).json(data)
-    } catch {
-      return res.status(response.status).json({ error: text })
-    }
   } catch (error) {
     return res.status(500).json({
-      error: error.message,
+      error: error.message
     })
   }
 })

@@ -362,10 +362,10 @@ const handleAdd = async () => {
         width: 'fit-content',
       }}>
         <button style={tabBtn(tab === 'records')} onClick={() => setTab('records')}>
-          📋 Records {allBookings.length > 0 && `(${allBookings.length})`}
+          Records {allBookings.length > 0 && `(${allBookings.length})`}
         </button>
         <button style={tabBtn(tab === 'upload')} onClick={() => setTab('upload')}>
-          ⬆ Upload CSV
+          Upload CSV
         </button>
       </div>
 
@@ -632,7 +632,6 @@ const handleAdd = async () => {
                 <input id="csv-input" type="file" accept=".csv"
                   style={{ display: 'none' }}
                   onChange={e => handleFile(e.target.files[0])} />
-                <div style={{ fontSize: 36, marginBottom: 14, opacity: 0.5 }}>📂</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#E5E7EB', marginBottom: 6 }}>
                   Drop your CSV here
                 </div>
