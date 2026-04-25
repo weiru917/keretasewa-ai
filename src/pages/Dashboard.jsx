@@ -3,21 +3,32 @@ import { useNavigate } from 'react-router-dom'
 import { useFleetStore } from '../store/fleetStore'
 import { processFleetData } from '../utils/dataProcessor'
 import { mockBookings, mockVehicles } from '../data/mockData'
+import { useAIRecommendations } from '../hooks/useAI'
 import MetricCards from '../components/MetricCards'
 import UtilizationChart from '../components/UtilizationChart'
 import WeekdayChart from '../components/WeekdayChart'
 import RecommendationCards from '../components/RecommendationCards'
 import ImpactCalculator from '../components/ImpactCalculator'
+import AskAIPanel from '../components/askAIpanel'
+
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { processedData, setProcessedData, aiRecommendations, aiLoading, aiError } = useFleetStore()
+  const { fetchRecommendations } = useAIRecommendations()
 
   useEffect(() => {
     if (!processedData) {
       setProcessedData(processFleetData(mockBookings, mockVehicles))
     }
   }, [])
+
+  // AI part: fetch recommendations when data is ready
+  useEffect(() => {
+    if (processedData && !aiRecommendations && !aiLoading) {
+      fetchRecommendations()
+    }
+  }, [processedData, aiRecommendations, aiLoading, fetchRecommendations])
 
   return (
     <div style={{ padding: 28, minHeight: '100vh' }}>
@@ -31,15 +42,18 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
+            onClick={() => fetchRecommendations()}
+            disabled={aiLoading}
             style={{
               background: 'rgba(255,255,255,0.07)',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 10, color: '#E5E7EB',
               padding: '9px 18px', fontSize: 13,
-              fontWeight: 500, cursor: 'pointer',
+              fontWeight: 500, cursor: aiLoading ? 'not-allowed' : 'pointer',
+              opacity: aiLoading ? 0.6 : 1,
             }}
           >
-            ↻ Refresh AI
+            {aiLoading ? '⟳ Loading...' : '↻ Refresh AI'}
           </button>
           <button
             onClick={() => navigate('/data')}
@@ -86,38 +100,7 @@ export default function Dashboard() {
 
       <ImpactCalculator data={processedData} recommendations={aiRecommendations} />
 
-      <button
-  onClick={() => navigate('/ask-ai')}
-  title="Ask AI"
-  style={{
-    position: 'fixed',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #253BAF, #7B9FFF)',
-    border: '1px solid rgba(123,159,255,0.4)',
-    boxShadow: '0 0 20px rgba(123,159,255,0.6), 0 10px 30px rgba(0,0,0,0.4)',
-    color: 'white',
-    fontSize: 22,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    zIndex: 9999,
-    animation: 'floatPulse 2.5s ease-in-out infinite',
-    transition: 'transform 0.2s ease',
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.transform = 'scale(1.1)'
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.transform = 'scale(1)'
-  }}
->
-  ◈
-</button>
+     <AskAIPanel />
     </div>
   )
 }
