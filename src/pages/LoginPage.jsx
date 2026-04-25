@@ -6,6 +6,8 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth'
+import { createUserProfile, getUserProfile } from '../utils/firestoreService'
+import { useFleetStore } from '../store/fleetStore'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -41,10 +43,20 @@ export default function LoginPage() {
     setLoading(true)
     try {
       if (isSignUp) {
+        // 1. Create Firebase Auth account
         const cred = await createUserWithEmailAndPassword(auth, email, password)
+        // 2. Set display name
         if (name) await updateProfile(cred.user, { displayName: name })
+        // 3. Create Firestore user document
+        await createUserProfile(cred.user.uid, { displayName: name, email })
+        // 4. Load it into store
+        setUserProfile({ displayName: name, email, currency: 'RM', plan: 'free' })
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
+        // 1. Sign in
+        const cred = await signInWithEmailAndPassword(auth, email, password)
+        // 2. Load their Firestore profile into store
+        const profile = await getUserProfile(cred.user.uid)
+        setUserProfile(profile)
       }
       navigate('/')
     } catch (e) {
