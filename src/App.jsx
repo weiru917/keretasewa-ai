@@ -6,7 +6,6 @@ import {
   getUserProfile,
   getBookings,
   getVehicles,
-  getRecommendations,
 } from './utils/firestoreService'
 import { processFleetData } from './utils/dataProcessor'
 import { useFleetStore } from './store/fleetStore'
@@ -33,7 +32,7 @@ export default function App() {
   const [user, setUser]     = useState(undefined)
   const [loading, setLoading] = useState(true)
   const {
-    setUserProfile, setRawData,
+    hasData, setUserProfile, setRawData,
     setProcessedData, setAIRecommendations, clearAll,
   } = useFleetStore()
 
@@ -47,7 +46,6 @@ export default function App() {
             getUserProfile(u.uid),
             getBookings(u.uid),
             getVehicles(u.uid),
-            getRecommendations(u.uid),
           ])
 
           if (profile)         setUserProfile(profile)
@@ -58,6 +56,7 @@ export default function App() {
             setRawData(bookings, vehicles)
             setProcessedData(processFleetData(bookings, vehicles))
           }
+          // if no bookings/vehicles -> hasData stays false -> routed to /data
         } catch (e) {
           console.error('Error loading user data:', e)
         }
@@ -77,10 +76,22 @@ export default function App() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#7B9FFF', fontSize: 14, fontFamily: 'Inter, system-ui',
       }}>
-        Loading...
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', marginBottom: 8 }}>
+            Kereta<span style={{ color: '#7B9FFF' }}>Sewa</span> AI
+          </div>
+          <div style={{ fontSize: 13, color: '#6B7280' }}>Loading your fleet data...</div>
+        </div>
       </div>
     )
   }
+
+  // Smart redirect to data page to upload data if they haven't done so yet
+  const homeElement = !user
+    ? <Navigate to="/landing" replace />
+    : !hasData
+      ? <Navigate to="/data" replace />        // no data -> upload first
+      : <ProtectedLayout><Dashboard /></ProtectedLayout>
 
   return (
     <BrowserRouter>
