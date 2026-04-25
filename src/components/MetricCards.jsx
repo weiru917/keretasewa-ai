@@ -13,6 +13,9 @@ export default function MetricCards({ data }) {
   const extraDays     = Math.max(0, potentialDays - v.bookedDays)
   return sum + extraDays * price
 }, 0)
+const projected = summary.revenue + potentialGain
+const cappedProjected = Math.min(projected, summary.revenue * 3)
+const cappedGain = cappedProjected - summary.revenue
 
   // Idle days that could be recovered (vehicles below 80%)
   const recoverableIdleDays = vehicles.reduce((sum, v) => {
@@ -21,21 +24,21 @@ export default function MetricCards({ data }) {
   }, 0)
 
   const cards = [
-  {
-    label:  'Monthly Revenue',
-    value:  `RM ${summary.revenue.toLocaleString()}`,
-    sub:    potentialGain > 0
-              ? `Could reach RM ${(summary.revenue + potentialGain).toLocaleString()} at 80% util`
-              : 'At full potential',
-    up:     potentialGain > 0,
-    accent: '#7B9FFF',
-  },
+{
+  label: 'Monthly Revenue',
+  value: `RM ${summary.revenue.toLocaleString()}`,
+  sub: cappedGain > 0
+    ? `Could reach RM ${cappedProjected.toLocaleString()} with improved utilization`
+    : 'At full potential',
+  up: cappedGain > 0,
+  accent: '#7B9FFF',
+},
   {
     label:  'Fleet Utilization',
     value:  `${summary.utilization}%`,
     sub:    summary.utilization < TARGET_UTIL
               ? `${TARGET_UTIL - summary.utilization}% below target — room to grow`
-              : '🎉 Above target',
+              : ' Above target',
     up:     summary.utilization < TARGET_UTIL,
     accent: '#22C55E',
   },
