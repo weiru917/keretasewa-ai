@@ -25,10 +25,29 @@ async function callGLM(messages, systemPrompt = '') {
     }),
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`GLM API Error: ${response.status} - ${errorText}`)
+ if (!response.ok) {
+  const errorText = await response.text()
+
+  if (response.status === 504) {
+    throw new Error(
+      'AI provider is temporarily busy right now. Please try again in a moment.'
+    )
   }
+
+  if (response.status === 404) {
+    throw new Error(
+      'AI endpoint unavailable at the moment.'
+    )
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(
+      'AI authentication failed. Please check API key.'
+    )
+  }
+
+  throw new Error(`GLM API Error: ${response.status}`)
+}
 
   const data = await response.json()
 
