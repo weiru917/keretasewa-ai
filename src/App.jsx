@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
+import {
+  getUserProfile,
+  getBookings,
+  getVehicles,
+  getRecommendations,
+} from './utils/firestoreService'
+import { processFleetData } from './utils/dataProcessor'
+import { useFleetStore } from './store/fleetStore'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import DataPage from './pages/DataPage'
@@ -24,10 +32,39 @@ function ProtectedLayout({ children }) {
 export default function App() {
   const [user, setUser]     = useState(undefined)
   const [loading, setLoading] = useState(true)
+  const {
+    setUserProfile, setRawData,
+    setProcessedData, setAIRecommendations, clearAll,
+  } = useFleetStore()
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u)
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        setUser(u)
+        try {
+          // Load all user data from Firestore in parallel
+          const [profile, bookings, vehicles, recommendations] = await Promise.all([
+            getUserProfile(u.uid),
+            getBookings(u.uid),
+            getVehicles(u.uid),
+            getRecommendations(u.uid),
+          ])
+
+          if (profile)         setUserProfile(profile)
+          if (recommendations) setAIRecommendations(recommendations)
+
+          // If they have saved fleet data, process it
+          if (bookings.length > 0 && vehicles.length > 0) {
+            setRawData(bookings, vehicles)
+            setProcessedData(processFleetData(bookings, vehicles))
+          }
+        } catch (e) {
+          console.error('Error loading user data:', e)
+        }
+      } else {
+        setUser(null)
+        clearAll()
+      }
       setLoading(false)
     })
     return unsub

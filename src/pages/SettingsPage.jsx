@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { auth } from '../firebase'
+import { auth, db } from '../firebase'
 import {
   updatePassword,
   deleteUser,
@@ -8,20 +8,57 @@ import {
   updateProfile,
 } from 'firebase/auth'
 
-const Section = ({ title, children }) => (
+import { doc, deleteDoc } from 'firebase/firestore'
+import { getUserProfile, updateUserProfile } from '../utils/firestoreService'
+import { useFleetStore } from '../store/fleetStore'
+
+/* ---------------- UI COMPONENTS ---------------- */
+
+const Section = ({ title, message, children }) => (
   <div style={{
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 16, padding: 24, marginBottom: 16,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 16,
   }}>
-    <div style={{ fontSize: 14, fontWeight: 600, color: '#E5E7EB', marginBottom: 20 }}>{title}</div>
+    <div style={{ fontSize: 14, fontWeight: 600, color: '#E5E7EB', marginBottom: 12 }}>
+      {title}
+    </div>
+
+    {message && (
+      <div style={{
+        padding: '12px 14px',
+        borderRadius: 10,
+        marginBottom: 16,
+        fontSize: 13,
+        background: message.type === 'error'
+          ? 'rgba(239,68,68,0.1)'
+          : 'rgba(34,197,94,0.1)',
+        border: `1px solid ${
+          message.type === 'error'
+            ? 'rgba(239,68,68,0.3)'
+            : 'rgba(34,197,94,0.3)'
+        }`,
+        color: message.type === 'error' ? '#EF4444' : '#22C55E',
+      }}>
+        {message.text}
+      </div>
+    )}
+
     {children}
   </div>
 )
 
 const Field = ({ label, children }) => (
   <div style={{ marginBottom: 16 }}>
-    <label style={{ fontSize: 12, color: '#9CA3AF', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+    <label style={{
+      fontSize: 12,
+      color: '#9CA3AF',
+      display: 'block',
+      marginBottom: 6,
+      fontWeight: 500
+    }}>
       {label}
     </label>
     {children}
@@ -29,129 +66,250 @@ const Field = ({ label, children }) => (
 )
 
 const inputStyle = {
-  width: '100%', background: 'rgba(255,255,255,0.07)',
-  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
-  color: '#E5E7EB', padding: '10px 14px', fontSize: 13, outline: 'none',
+  width: '100%',
+  background: 'rgba(255,255,255,0.07)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 10,
+  color: '#E5E7EB',
+  padding: '10px 14px',
+  fontSize: 13,
+  outline: 'none',
 }
+
+/* ---------------- PAGE ---------------- */
 
 export default function SettingsPage() {
   const user = auth.currentUser
+  const setUserProfile = useFleetStore(s => s.setUserProfile)
+
+  /* Profile */
   const [displayName, setDisplayName] = useState(user?.displayName || '')
-  const [currentPw, setCurrentPw]   = useState('')
-  const [newPw, setNewPw]           = useState('')
-  const [confirmPw, setConfirmPw]   = useState('')
+  const [profileMsg, setProfileMsg] = useState(null)
+
+  /* Password */
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwConfirm, setPwConfirm] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState(null)
+
+  /* Delete */
   const [deleteConfirm, setDeleteConfirm] = useState('')
-  const [msg, setMsg] = useState({ text: '', type: '' })
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteMsg, setDeleteMsg] = useState(null)
 
-  const flash = (text, type = 'success') => {
-    setMsg({ text, type })
-    setTimeout(() => setMsg({ text: '', type: '' }), 3000)
-  }
+  /* Load profile */
+  useEffect(() => {
+    if (user) {
+      getUserProfile(user.uid).then(profile => {
+        if (profile) setDisplayName(profile.displayName || '')
+      })
+    }
+  }, [user])
 
+  /* ---------------- PROFILE ---------------- */
   const saveProfile = async () => {
+    if (!user) return setProfileMsg({ text: 'Not authenticated', type: 'error' })
+
     try {
       await updateProfile(user, { displayName })
-      flash('Profile updated successfully')
+      await updateUserProfile(user.uid, { displayName })
+
+      setUserProfile({ displayName, email: user.email })
+
+      setProfileMsg({ text: 'Profile updated successfully', type: 'success' })
+      setTimeout(() => setProfileMsg(null), 3000)
     } catch (e) {
-      flash(e.message, 'error')
+      setProfileMsg({ text: e.message, type: 'error' })
     }
   }
 
+  /* ---------------- PASSWORD ---------------- */
   const changePassword = async () => {
-    if (newPw !== confirmPw) return flash('Passwords do not match', 'error')
-    if (newPw.length < 6) return flash('Password must be at least 6 characters', 'error')
+    if (!user) return setPasswordMsg({ text: 'Not authenticated', type: 'error' })
+
+    if (newPw !== confirmPw) {
+      return setPasswordMsg({ text: 'Passwords do not match', type: 'error' })
+    }
+
+    if (newPw.length < 6) {
+      return setPasswordMsg({ text: 'Password too short', type: 'error' })
+    }
+
+    if (!pwConfirm) {
+      return setPasswordMsg({ text: 'Enter current password', type: 'error' })
+    }
+
     try {
-      const cred = EmailAuthProvider.credential(user.email, currentPw)
+      const cred = EmailAuthProvider.credential(user.email, pwConfirm)
       await reauthenticateWithCredential(user, cred)
+
       await updatePassword(user, newPw)
-      setCurrentPw(''); setNewPw(''); setConfirmPw('')
-      flash('Password changed successfully')
+
+      setNewPw('')
+      setConfirmPw('')
+      setPwConfirm('')
+
+      setPasswordMsg({ text: 'Password updated successfully', type: 'success' })
+      setTimeout(() => setPasswordMsg(null), 3000)
     } catch (e) {
-      flash(e.message, 'error')
+      setPasswordMsg({ text: e.message, type: 'error' })
     }
   }
 
+  /* ---------------- DELETE ---------------- */
   const deleteAccount = async () => {
-    if (deleteConfirm !== 'DELETE') return flash('Type DELETE to confirm', 'error')
+    if (!user) return setDeleteMsg({ text: 'Not authenticated', type: 'error' })
+
+    if (deleteConfirm.trim().toUpperCase() !== 'DELETE') {
+      return setDeleteMsg({ text: 'Type DELETE to confirm', type: 'error' })
+    }
+
+    if (!deletePassword) {
+      return setDeleteMsg({ text: 'Enter password', type: 'error' })
+    }
+
     try {
+      const cred = EmailAuthProvider.credential(user.email, deletePassword)
+      await reauthenticateWithCredential(user, cred)
+
+      await deleteDoc(doc(db, 'users', user.uid))
       await deleteUser(user)
+
+      setDeleteMsg({ text: 'Account deleted', type: 'success' })
+
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 1000)
     } catch (e) {
-      flash(e.message, 'error')
+      setDeleteMsg({ text: e.message, type: 'error' })
     }
   }
 
-  const btnStyle = (color = '#253BAF') => ({
-    background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-    border: `1px solid ${color}44`,
-    borderRadius: 10, color: 'white',
-    padding: '10px 20px', fontSize: 13,
-    fontWeight: 500, cursor: 'pointer', marginTop: 4,
-  })
-
+  /* ---------------- UI ---------------- */
   return (
     <div style={{ padding: 28, maxWidth: 600 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#FFFFFF', letterSpacing: -0.3 }}>Settings</h1>
-        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>Manage your account and preferences</div>
+
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>
+        Settings
+      </h1>
+
+      <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 24 }}>
+        Manage your account and preferences
       </div>
 
-      {msg.text && (
-        <div style={{
-          padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13,
-          background: msg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
-          border: `1px solid ${msg.type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
-          color: msg.type === 'error' ? '#EF4444' : '#22C55E',
-        }}>
-          {msg.text}
-        </div>
-      )}
-
-      {/* Profile */}
-      <Section title="Profile">
-        <Field label="Email address">
+      {/* PROFILE */}
+      <Section title="Profile" message={profileMsg}>
+        <Field label="Email">
           <input style={{ ...inputStyle, opacity: 0.5 }} value={user?.email || ''} disabled />
         </Field>
+
         <Field label="Display name">
-          <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
-        </Field>
-        <button style={btnStyle()} onClick={saveProfile}>Save profile</button>
-      </Section>
-
-      {/* Change password */}
-      <Section title="Change password">
-        <Field label="Current password">
-          <input style={inputStyle} type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="Enter current password" />
-        </Field>
-        <Field label="New password">
-          <input style={inputStyle} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min 6 characters" />
-        </Field>
-        <Field label="Confirm new password">
-          <input style={inputStyle} type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Repeat new password" />
-        </Field>
-        <button style={btnStyle()} onClick={changePassword}>Update password</button>
-      </Section>
-
-      {/* Danger zone */}
-      <Section title="Danger zone">
-        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 16, lineHeight: 1.6 }}>
-          Deleting your account is permanent. All your data will be removed and cannot be recovered.
-          Type <strong style={{ color: '#EF4444' }}>DELETE</strong> to confirm.
-        </div>
-        <Field label="Confirm deletion">
           <input
-            style={{ ...inputStyle, borderColor: 'rgba(239,68,68,0.2)' }}
-            value={deleteConfirm}
-            onChange={e => setDeleteConfirm(e.target.value)}
-            placeholder='Type DELETE'
+            style={inputStyle}
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
           />
         </Field>
+
         <button
-          style={btnStyle('#EF4444')}
-          onClick={deleteAccount}
+          onClick={saveProfile}
+          style={{
+            background: '#253BAF',
+            color: '#fff',
+            padding: '10px 20px',
+            borderRadius: 10,
+            border: 'none',
+            cursor: 'pointer'
+          }}
         >
-          Delete account permanently
+          Save profile
         </button>
       </Section>
+
+      {/* PASSWORD */}
+      <Section title="Change password" message={passwordMsg}>
+        <Field label="Current password">
+          <input
+            style={inputStyle}
+            type="password"
+            value={pwConfirm}
+            onChange={e => setPwConfirm(e.target.value)}
+          />
+        </Field>
+
+        <Field label="New password">
+          <input
+            style={inputStyle}
+            type="password"
+            value={newPw}
+            onChange={e => setNewPw(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Confirm new password">
+          <input
+            style={inputStyle}
+            type="password"
+            value={confirmPw}
+            onChange={e => setConfirmPw(e.target.value)}
+          />
+        </Field>
+
+        <button
+          onClick={changePassword}
+          style={{
+            background: '#253BAF',
+            color: '#fff',
+            padding: '10px 20px',
+            borderRadius: 10,
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          Update password
+        </button>
+      </Section>
+
+      {/* DELETE */}
+      <Section title="Danger zone" message={deleteMsg}>
+        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 16 }}>
+          Type <b style={{ color: '#EF4444' }}>DELETE</b> to confirm account deletion
+        </div>
+
+        <Field label="Confirm">
+          <input
+            style={inputStyle}
+            value={deleteConfirm}
+            onChange={e => setDeleteConfirm(e.target.value)}
+            placeholder="Type DELETE"
+          />
+        </Field>
+
+        <Field label="Password">
+          <input
+            style={inputStyle}
+            type="password"
+            value={deletePassword}
+            onChange={e => setDeletePassword(e.target.value)}
+            placeholder="Enter password"
+          />
+        </Field>
+
+        <button
+          onClick={deleteAccount}
+          style={{
+            background: '#EF4444',
+            color: '#fff',
+            padding: '10px 20px',
+            borderRadius: 10,
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          Delete account
+        </button>
+      </Section>
+
     </div>
   )
 }
