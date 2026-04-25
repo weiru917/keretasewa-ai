@@ -1,37 +1,61 @@
 export default function MetricCards({ data }) {
   if (!data) return null
-  const { summary } = data
+  const { summary, vehicles } = data
+
+  const lowestUtil  = vehicles.length > 0 ? Math.min(...vehicles.map(v => v.utilization)) : 0
+  const highestUtil = vehicles.length > 0 ? Math.max(...vehicles.map(v => v.utilization)) : 0
+
+  // Potential revenue = if all vehicles hit 80% utilization
+  const TARGET_UTIL   = 80
+  const potentialGain = vehicles.reduce((sum, v) => {
+  const price         = v.basePrice > 0 ? v.basePrice : (summary.revenue / (summary.total_bookings || 1))
+  const potentialDays = Math.round((TARGET_UTIL / 100) * summary.days_in_month)
+  const extraDays     = Math.max(0, potentialDays - v.bookedDays)
+  return sum + extraDays * price
+}, 0)
+
+  // Idle days that could be recovered (vehicles below 80%)
+  const recoverableIdleDays = vehicles.reduce((sum, v) => {
+    const potentialDays = Math.round((TARGET_UTIL / 100) * summary.days_in_month)
+    return sum + Math.max(0, potentialDays - v.bookedDays)
+  }, 0)
 
   const cards = [
-    {
-      label: 'Monthly Revenue',
-      value: `RM ${summary.revenue.toLocaleString()}`,
-      sub: '+RM 1,140 potential',
-      up: true,
-      accent: '#7B9FFF',
-    },
-    {
-      label: 'Fleet Utilization',
-      value: `${summary.utilization}%`,
-      sub: 'Target: 67%',
-      up: true,
-      accent: '#22C55E',
-    },
-    {
-      label: 'Idle Days',
-      value: summary.idle_days,
-      sub: '-16 days possible',
-      up: false,
-      accent: '#EF4444',
-    },
-    {
-      label: 'Total Bookings',
-      value: summary.total_bookings,
-      sub: 'This month',
-      up: null,
-      accent: '#F59E0B',
-    },
-  ]
+  {
+    label:  'Monthly Revenue',
+    value:  `RM ${summary.revenue.toLocaleString()}`,
+    sub:    potentialGain > 0
+              ? `Could reach RM ${(summary.revenue + potentialGain).toLocaleString()} at 80% util`
+              : 'At full potential',
+    up:     potentialGain > 0,
+    accent: '#7B9FFF',
+  },
+  {
+    label:  'Fleet Utilization',
+    value:  `${summary.utilization}%`,
+    sub:    summary.utilization < TARGET_UTIL
+              ? `${TARGET_UTIL - summary.utilization}% below target — room to grow`
+              : '🎉 Above target',
+    up:     summary.utilization < TARGET_UTIL,
+    accent: '#22C55E',
+  },
+  {
+    label:  'Idle Days',
+    value:  summary.idle_days,
+    sub:    recoverableIdleDays > 0
+              ? `${recoverableIdleDays} days of earning opportunity unused`
+              : 'Fully optimised',
+    up:     false,
+    accent: '#EF4444',
+  },
+  {
+    label:  'Total Bookings',
+    value:  summary.total_bookings,
+    sub:    `${summary.days_in_month}-day month · ${vehicles.length} vehicles`,
+    up:     null,
+    accent: '#F59E0B',
+  },
+]
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>

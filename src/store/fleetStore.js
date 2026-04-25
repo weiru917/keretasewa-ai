@@ -10,6 +10,7 @@ export const useFleetStore = create((set) => ({
 
   // Processed data
   processedData: null,
+  hasData: false,
 
   // AI Recommendation states
   aiRecommendations: null,
@@ -20,12 +21,18 @@ export const useFleetStore = create((set) => ({
   askMessages: [],
 
   // Actions
-  setRawData: (bookings, vehicles) =>
-    set({ rawBookings: bookings, rawVehicles: vehicles }),
-
-  setProcessedData: (data) => set({ processedData: data }),
-
-  setAIRecommendations: (recs) => set({ aiRecommendations: recs }),
-  setAILoading: (val) => set({ aiLoading: val }),
-  setAIError: (err) => set({ aiError: err }),
+  setUserProfile:      (p)    => set({ userProfile: p }),
+  setRawData:          (b, v) => set({ rawBookings: b, rawVehicles: v }),
+  setProcessedData:    (d)    => set({ processedData: d, hasData: !!d }),
+  setAIRecommendations:(r)    => set({ aiRecommendations: r }),
+  setAILoading:        (v)    => set({ aiLoading: v }),
+  setAIError:          (e)    => set({ aiError: e }),
+  setAskMessages:          (a)    => set({ askMessages: a }),
+  clearAll:            ()     => set({
+    userProfile: null,
+    rawBookings: [], rawVehicles: [],
+    processedData: null,
+    hasData: false,
+    aiRecommendations: null,
+  }),
 }))

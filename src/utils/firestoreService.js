@@ -11,6 +11,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore'
 
 // USER PROFILE
@@ -41,19 +42,20 @@ export async function updateUserProfile(uid, data) {
 
 // VEHICLES 
 
-// Save full vehicles array for this user
+// Save vehicles
 export async function saveVehicles(uid, vehicles) {
-  // Delete old vehicles first, then re-add
-  const colRef = collection(db, 'users', uid, 'vehicles')
+  const colRef   = collection(db, 'users', uid, 'vehicles')
   const existing = await getDocs(colRef)
-  for (const d of existing.docs) await deleteDoc(d.ref)
+  const existingModels = existing.docs.map(d => d.data().model?.toLowerCase())
 
+  const batch = writeBatch(db)
   for (const v of vehicles) {
-    await addDoc(colRef, {
-      ...v,
-      savedAt: serverTimestamp(),
-    })
+    if (!existingModels.includes(v.model?.toLowerCase())) {
+      const ref = doc(colRef)
+      batch.set(ref, { ...v, addedAt: serverTimestamp() })
+    }
   }
+  await batch.commit()
 }
 
 // Get all vehicles for this user
@@ -62,40 +64,58 @@ export async function getVehicles(uid) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
+export async function updateVehicle(uid, vehicleId, data) {
+  await updateDoc(doc(db, 'users', uid, 'vehicles', vehicleId), data)
+}
+
+export async function deleteVehicle(uid, vehicleId) {
+  await deleteDoc(doc(db, 'users', uid, 'vehicles', vehicleId))
+}
+
 // BOOKINGS 
 
-// Save full bookings array for this user
-export async function saveBookings(uid, bookings) {
-  const colRef = collection(db, 'users', uid, 'bookings')
+// Append new bookings — skip duplicates (same vehicle + date)
+export async function appendBookings(uid, newBookings) {
+  const colRef   = collection(db, 'users', uid, 'bookings')
   const existing = await getDocs(colRef)
-  for (const d of existing.docs) await deleteDoc(d.ref)
+  const existingKeys = new Set(
+    existing.docs.map(d => `${d.data().vehicle}__${d.data().date}`)
+  )
 
-  for (const b of bookings) {
-    await addDoc(colRef, {
-      ...b,
-      savedAt: serverTimestamp(),
-    })
+  const batch = writeBatch(db)
+  let added = 0
+  for (const b of newBookings) {
+    const key = `${b.vehicle}__${b.date}`
+    if (!existingKeys.has(key)) {
+      const ref = doc(colRef)
+      batch.set(ref, { ...b, addedAt: serverTimestamp() })
+      added++
+    }
   }
+  await batch.commit()
+  return added // how many new rows were added
 }
 
 // Get all bookings for this user
 export async function getBookings(uid) {
-  const snap = await getDocs(collection(db, 'users', uid, 'bookings'))
+  const q    = query(collection(db, 'users', uid, 'bookings'), orderBy('date', 'asc'))
+  const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-// AI RECOMMENDATIONS 
+export async function addBooking(uid, booking) {
+  const ref = await addDoc(collection(db, 'users', uid, 'bookings'), {
+    ...booking, addedAt: serverTimestamp(),
+  })
+  return ref.id
+}
 
-// Save AI recommendations (Person B calls this)
-export async function saveRecommendations(uid, recommendations) {
-  await setDoc(doc(db, 'users', uid, 'ai', 'recommendations'), {
-    items:     recommendations,
-    updatedAt: serverTimestamp(),
+export async function updateBooking(uid, bookingId, data) {
+  await updateDoc(doc(db, 'users', uid, 'bookings', bookingId), {
+    ...data, updatedAt: serverTimestamp(),
   })
 }
 
-// Get saved recommendations
-export async function getRecommendations(uid) {
-  const snap = await getDoc(doc(db, 'users', uid, 'ai', 'recommendations'))
-  return snap.exists() ? snap.data().items : null
+export async function deleteBooking(uid, bookingId) {
+  await deleteDoc(doc(db, 'users', uid, 'bookings', bookingId))
 }
