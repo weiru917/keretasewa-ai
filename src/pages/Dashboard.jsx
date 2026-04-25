@@ -204,7 +204,7 @@ const processedData = rawBookings.length > 0
         fontSize: 12, color: '#7B9FFF', fontWeight: 500,
         marginBottom: 20,
       }}>
-        📅 Showing {formatMonth(selectedMonth)}
+         Showing {formatMonth(selectedMonth)}
       </div>
 
       <MetricCards data={processedData} />

@@ -175,26 +175,43 @@ export default function DataPage() {
     return null
   }
 
-  // ── Add booking ──────────────────────────────────────────────
-  const handleAdd = async () => {
+// ── Add booking ──────────────────────────────────────────────
+const handleAdd = async () => {
+  setFieldError('')
+  const error = validateForm(addForm)
+  if (error) { setFieldError(error); return }
+
+  setSaving(true)
+  try {
+    const normalized = {
+      ...addForm,
+      date: normalizeDate(addForm.date) || addForm.date,
+      price: parseFloat(addForm.price),
+    }
+
+    await addBooking(uid, normalized)
+
+    await saveVehicles(uid, [
+      {
+        model: normalized.vehicle,
+        basePrice: normalized.price,
+      },
+    ])
+
+    const freshBookings = await getBookings(uid)
+    const freshVehicles = await getVehicles(uid)
+
+    setAllBookings(freshBookings)
+    setAllVehicles(freshVehicles)
+    recompute(freshBookings, freshVehicles)
+
+    setAdding(false)
+    setAddForm(EMPTY_BOOKING)
     setFieldError('')
-    const error = validateForm(addForm)
-    if (error) { setFieldError(error); return }
-
-    setSaving(true)
-    try {
-      const normalized = { ...addForm, date: normalizeDate(addForm.date) || addForm.date, price: parseFloat(addForm.price) }
-      const newId = await addBooking(uid, normalized)
-      const updated = [...allBookings, { id: newId, ...normalized }]
-        .sort((a, b) => a.date.localeCompare(b.date))
-      setAllBookings(updated)
-      recompute(updated, allVehicles)
-      setAdding(false)
-      setAddForm(EMPTY_BOOKING)
-      setFieldError('')
-    } finally { setSaving(false) }
+  } finally {
+    setSaving(false)
   }
-
+}
   // ── Edit booking ─────────────────────────────────────────────
   const startEdit = (b) => {
     setEditingId(b.id)
